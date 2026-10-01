@@ -21,17 +21,8 @@ bcrypt==4.0.1
 # ─── Validation ───
 pydantic[email]==2.9.2
 
-# ─── HTTP Client (for LLM providers) ───
+# ─── HTTP Client ───
 requests==2.32.3
 
-# ─── LLM SDKs (optional — only needed if using cloud LLMs) ───
+# ─── LLM SDKs ───
 openai==1.54.0
-# anthropic==0.39.0   # uncomment if using Claude
-
-D:
-cd branch-intelligence
-
-python -m venv venv
-venvactivate\Scripts\
-
-pip install -r requirements.txt
