@@ -26,7 +26,7 @@ def login(
         # Log failed attempt
         user_service.log_action(
             db, None, "LOGIN_FAILED", "user", body.username,
-            ip=request.client.host if request.client else None,
+            ip_address=request.client.host if request.client else None,
             user_agent=request.headers.get("user-agent"),
         )
         raise HTTPException(status_code=401, detail="Invalid username or password")
@@ -44,7 +44,7 @@ def login(
 
     user_service.log_action(
         db, user["id"], "LOGIN", "user", str(user["id"]),
-        ip=request.client.host if request.client else None,
+        ip_address=request.client.host if request.client else None,
         user_agent=request.headers.get("user-agent"),
     )
 
@@ -83,7 +83,7 @@ def register(
 
     user_service.log_action(
         db, user["id"], "REGISTER", "user", str(user["id"]),
-        ip=request.client.host if request.client else None,
+        ip_address=request.client.host if request.client else None,
     )
 
     # Auto-login after register
@@ -119,7 +119,7 @@ def logout(
 
     user_service.log_action(
         db, user["id"], "LOGOUT", "user", str(user["id"]),
-        ip=request.client.host if request.client else None,
+        ip_address=request.client.host if request.client else None,
     )
     return {"message": "Logged out"}
 
