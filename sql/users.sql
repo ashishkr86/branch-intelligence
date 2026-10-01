@@ -1,0 +1,52 @@
+-- ═══════════════════════════════════════════════════════════════
+-- Users + Sessions tables for authentication
+-- Run: mysql -u root -p gentech_db < sql\users.sql
+-- ═══════════════════════════════════════════════════════════════
+
+USE gentech_db;
+
+-- ─── Users ───
+CREATE TABLE IF NOT EXISTS users (
+  ID INT AUTO_INCREMENT PRIMARY KEY,
+  USERNAME VARCHAR(50) NOT NULL UNIQUE,
+  EMAIL VARCHAR(150) NOT NULL UNIQUE,
+  FULL_NAME VARCHAR(150),
+  PASSWORD_HASH VARCHAR(255) NOT NULL,
+  ROLE VARCHAR(20) NOT NULL DEFAULT 'viewer',
+  IS_ACTIVE TINYINT(1) NOT NULL DEFAULT 1,
+  LAST_LOGIN DATETIME,
+  CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_users_username (USERNAME),
+  INDEX idx_users_email (EMAIL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ─── Sessions (for token revocation) ───
+CREATE TABLE IF NOT EXISTS sessions (
+  ID INT AUTO_INCREMENT PRIMARY KEY,
+  USER_ID INT NOT NULL,
+  TOKEN_JTI VARCHAR(64) NOT NULL UNIQUE,
+  ISSUED_AT DATETIME NOT NULL,
+  EXPIRES_AT DATETIME NOT NULL,
+  REVOKED TINYINT(1) NOT NULL DEFAULT 0,
+  USER_AGENT VARCHAR(255),
+  INDEX idx_sessions_user (USER_ID),
+  INDEX idx_sessions_jti (TOKEN_JTI),
+  CONSTRAINT fk_sessions_user FOREIGN KEY (USER_ID)
+    REFERENCES users(ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ─── Activity audit log ───
+CREATE TABLE IF NOT EXISTS audit_log (
+  ID INT AUTO_INCREMENT PRIMARY KEY,
+  USER_ID INT,
+  ACTION VARCHAR(50) NOT NULL,
+  ENTITY VARCHAR(50),
+  ENTITY_ID VARCHAR(100),
+  IP_ADDRESS VARCHAR(45),
+  USER_AGENT VARCHAR(255),
+  DETAILS TEXT,
+  CREATED_AT TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_audit_user (USER_ID),
+  INDEX idx_audit_action (ACTION),
+  INDEX idx_audit_created (CREATED_AT)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

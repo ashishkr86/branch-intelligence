@@ -1,0 +1,104 @@
+-- ═══════════════════════════════════════════════════════════════
+-- Branch Intelligence — Analytics Views for Power BI / BI tools
+-- Run once:  mysql -u root -p gentech_db < sql/analytics_views.sql
+-- ═══════════════════════════════════════════════════════════════
+
+USE gentech_db;
+
+-- ─── 1. Branch Summary ───
+CREATE OR REPLACE VIEW v_branch_summary AS
+SELECT
+    b.BM_CODE,
+    b.BRANCH_NAME,
+    b.REGION,
+    COALESCE(emp.cnt, 0) AS EMPLOYEE_COUNT,
+    COALESCE(otp.cnt, 0) AS OTP_COUNT,
+    otp.last_otp AS LAST_OTP_DATE,
+    CASE
+        WHEN COALESCE(otp.cnt, 0) = 0 THEN 'IDLE'
+        WHEN COALESCE(otp.cnt, 0) < 100 THEN 'LOW'
+        ELSE 'ACTIVE'
+    END AS ACTIVITY_STATUS
+FROM branch b
+LEFT JOIN (
+    SELECT BM_CODE, COUNT(*) AS cnt
+    FROM branch_employee GROUP BY BM_CODE
+) emp ON emp.BM_CODE = b.BM_CODE
+LEFT JOIN (
+    SELECT BM_CODE, COUNT(*) AS cnt, MAX(OTP_DATE) AS last_otp
+    FROM otp_report GROUP BY BM_CODE
+) otp ON otp.BM_CODE = b.BM_CODE;
+
+-- ─── 2. Daily OTP Trend ───
+CREATE OR REPLACE VIEW v_daily_otp AS
+SELECT
+    OTP_DATE,
+    COUNT(*) AS OTP_COUNT,
+    COUNT(DISTINCT BM_CODE) AS ACTIVE_BRANCHES,
+    COUNT(DISTINCT OPERATOR) AS ACTIVE_OPERATORS
+FROM otp_report
+GROUP BY OTP_DATE
+ORDER BY OTP_DATE DESC;
+
+-- ─── 3. Purpose Analysis ───
+CREATE OR REPLACE VIEW v_otp_by_purpose AS
+SELECT
+    PURPOSE,
+    COUNT(*) AS OTP_COUNT,
+    COUNT(DISTINCT BM_CODE) AS BRANCHES_USING,
+    ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM otp_report), 2) AS PERCENTAGE
+FROM otp_report
+GROUP BY PURPOSE
+ORDER BY OTP_COUNT DESC;
+
+-- ─── 4. Operator Performance ───
+CREATE OR REPLACE VIEW v_operator_performance AS
+SELECT
+    OPERATOR,
+    COUNT(*) AS OTP_COUNT,
+    COUNT(DISTINCT BM_CODE) AS BRANCHES_COVERED,
+    MIN(OTP_DATE) AS FIRST_ACTIVITY,
+    MAX(OTP_DATE) AS LAST_ACTIVITY
+FROM otp_report
+WHERE OPERATOR IS NOT NULL AND OPERATOR != ''
+GROUP BY OPERATOR
+ORDER BY OTP_COUNT DESC;
+
+-- ─── 5. Regional Rollup ───
+CREATE OR REPLACE VIEW v_regional_rollup AS
+SELECT
+    b.REGION,
+    COUNT(DISTINCT b.BM_CODE) AS BRANCH_COUNT,
+    COUNT(DISTINCT e.ID) AS EMPLOYEE_COUNT,
+    COUNT(DISTINCT o.ID) AS OTP_COUNT
+FROM branch b
+LEFT JOIN branch_employee e ON e.BM_CODE = b.BM_CODE
+LEFT JOIN otp_report o ON o.BM_CODE = b.BM_CODE
+GROUP BY b.REGION
+ORDER BY OTP_COUNT DESC;
+
+-- ─── 6. ETL Health Summary ───
+CREATE OR REPLACE VIEW v_etl_health AS
+SELECT
+    DATE(RUN_DATE) AS RUN_DATE,
+    COUNT(*) AS TOTAL_RUNS,
+    SUM(CASE WHEN STATUS = 'SUCCESS' THEN 1 ELSE 0 END) AS SUCCESS_RUNS,
+    SUM(CASE WHEN STATUS = 'FAILED' THEN 1 ELSE 0 END) AS FAILED_RUNS,
+    SUM(ROWS_IN) AS TOTAL_ROWS_IN,
+    SUM(ROWS_LOADED) AS TOTAL_ROWS_LOADED,
+    SUM(ROWS_DROPPED) AS TOTAL_ROWS_DROPPED,
+    ROUND(AVG(DROP_PCT), 2) AS AVG_DROP_PCT,
+    ROUND(SUM(CASE WHEN STATUS = 'SUCCESS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS SUCCESS_RATE
+FROM etl_runs
+GROUP BY DATE(RUN_DATE)
+ORDER BY RUN_DATE DESC;
+
+-- ─── 7. Hourly OTP Pattern ───
+CREATE OR REPLACE VIEW v_hourly_otp AS
+SELECT
+    HOUR(OTP_TIME) AS HOUR_OF_DAY,
+    COUNT(*) AS OTP_COUNT,
+    ROUND(AVG(COUNT(*)) OVER (), 2) AS AVG_ACROSS_HOURS
+FROM otp_report
+GROUP BY HOUR(OTP_TIME)
+ORDER BY HOUR_OF_DAY;
