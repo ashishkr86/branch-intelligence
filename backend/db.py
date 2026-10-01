@@ -52,7 +52,7 @@ DB_USER = os.getenv(
 )
 
 DB_PASS = os.getenv(
-    "MYSQL_PASSWORD",
+    "AVNS_o-VLGKLj_R2_93P6UER",
     ""
 )
 
