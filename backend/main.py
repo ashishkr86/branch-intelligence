@@ -57,7 +57,6 @@ async def catch_http_errors(request: Request, call_next):
                 db, source="http_middleware", exc=exc,
                 endpoint=str(request.url.path),
                 method=request.method,
-                ip=request.client.host if request.client else None,
             )
         finally:
             db.close()
@@ -75,7 +74,6 @@ async def catch_http_errors(request: Request, call_next):
                 endpoint=str(request.url.path),
                 method=request.method,
                 status_code=response.status_code,
-                ip=request.client.host if request.client else None,
             )
         finally:
             db.close()
